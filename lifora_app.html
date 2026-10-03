@@ -1,0 +1,1625 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>LIFORA - Your everyday life companion</title>
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Phosphor Icons for modern, clean iconography -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <!-- Google Fonts: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- UUID generator for unique IDs -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/uuid/8.3.2/uuid.min.js"></script>
+    <!-- Date-fns for easier date manipulation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/date-fns/2.29.3/date-fns.min.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        primary: '#4F46E5', // Indigo 600
+                        primaryHover: '#4338CA',
+                        bgLight: '#F3F4F6', // Gray 100
+                        cardLight: '#FFFFFF',
+                        textMain: '#111827', // Gray 900
+                        textMuted: '#6B7280', // Gray 500
+                        accent1: '#10B981', // Emerald - Things I Buy
+                        accent2: '#EF4444', // Red - Medical
+                        accent3: '#3B82F6', // Blue - Timeline
+                        accent4: '#F59E0B', // Amber - Checklist
+                        accent5: '#8B5CF6', // Purple - Food
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Base styles and utility classes */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #F3F4F6;
+            color: #111827;
+            -webkit-tap-highlight-color: transparent;
+            overflow-x: hidden;
+            display: flex;
+            justify-content: center;
+            min-height: 100vh;
+        }
+
+        /* Mobile App Container simulation for web preview */
+        #app-container {
+            width: 100%;
+            max-width: 480px; /* Mobile width constraint */
+            height: 100vh;
+            background-color: #F3F4F6;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        /* View Containers */
+        .view {
+            display: none;
+            flex: 1;
+            overflow-y: auto;
+            flex-direction: column;
+            padding-bottom: 80px; /* Space for bottom nav */
+            animation: fadeIn 0.3s ease-in-out;
+        }
+
+        .view.active {
+            display: flex;
+        }
+
+        /* Splash Screen specific */
+        #splash-view {
+            display: flex;
+            background-color: #4F46E5;
+            color: white;
+            z-index: 50;
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+        }
+
+        /* Bottom Navigation */
+        #bottom-nav {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 65px;
+            background-color: #FFFFFF;
+            border-top: 1px solid #E5E7EB;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            z-index: 40;
+            padding-bottom: env(safe-area-inset-bottom); /* For iOS PWA */
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: #6B7280;
+            cursor: pointer;
+            width: 60px;
+            height: 100%;
+            transition: color 0.2s;
+        }
+
+        .nav-item.active {
+            color: #4F46E5;
+        }
+
+        .nav-item i {
+            font-size: 24px;
+            margin-bottom: 2px;
+        }
+
+        .nav-item span {
+            font-size: 10px;
+            font-weight: 500;
+        }
+
+        /* Floating Action Button (Quick Add) */
+        #fab-add {
+            background-color: #4F46E5;
+            color: white;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            transform: translateY(-10px);
+            transition: transform 0.2s, background-color 0.2s;
+        }
+        
+        #fab-add:active {
+            transform: translateY(-8px) scale(0.95);
+            background-color: #4338CA;
+        }
+
+        /* Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .splash-logo {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+
+        /* Custom Scrollbar for clean look */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #D1D5DB;
+            border-radius: 10px;
+        }
+
+        /* Utilities */
+        .hide { display: none !important; }
+        .glass-header {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border-bottom: 1px solid #E5E7EB;
+            position: sticky;
+            top: 0;
+            z-index: 30;
+        }
+        
+        /* Modals / Forms */
+        .modal-overlay {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 60;
+            display: none;
+            align-items: flex-end; /* Bottom sheet style */
+            justify-content: center;
+        }
+        .modal-content {
+            background: white;
+            width: 100%;
+            max-height: 90%;
+            border-top-left-radius: 20px;
+            border-top-right-radius: 20px;
+            padding: 20px;
+            overflow-y: auto;
+            transform: translateY(100%);
+            transition: transform 0.3s ease-out;
+        }
+        .modal-overlay.active {
+            display: flex;
+        }
+        .modal-overlay.active .modal-content {
+            transform: translateY(0);
+        }
+        
+        /* Toast Notification */
+        #toast-container {
+            position: absolute;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 70;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            pointer-events: none;
+        }
+        .toast {
+            background-color: #1F2937;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-size: 14px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            animation: slideUpFade 0.3s forwards;
+            opacity: 0;
+        }
+        @keyframes slideUpFade {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        /* Form Inputs */
+        .input-group { margin-bottom: 1rem; }
+        .input-label { display: block; font-size: 0.875rem; font-weight: 500; color: #374151; margin-bottom: 0.25rem; }
+        .input-field { 
+            width: 100%; padding: 0.75rem; border: 1px solid #D1D5DB; border-radius: 0.5rem; 
+            font-size: 1rem; transition: border-color 0.2s; background: white;
+        }
+        .input-field:focus { outline: none; border-color: #4F46E5; box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.2); }
+        .btn-primary { 
+            width: 100%; background-color: #4F46E5; color: white; padding: 0.75rem; 
+            border-radius: 0.5rem; font-weight: 600; text-align: center; cursor: pointer;
+        }
+        .btn-primary:active { background-color: #4338CA; }
+        .btn-secondary {
+             width: 100%; background-color: #E5E7EB; color: #374151; padding: 0.75rem; 
+            border-radius: 0.5rem; font-weight: 600; text-align: center; cursor: pointer;
+        }
+
+        /* Checkbox styling */
+        .custom-checkbox {
+            appearance: none;
+            width: 24px;
+            height: 24px;
+            border: 2px solid #D1D5DB;
+            border-radius: 6px;
+            outline: none;
+            cursor: pointer;
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .custom-checkbox:checked {
+            background-color: #4F46E5;
+            border-color: #4F46E5;
+        }
+        .custom-checkbox:checked::after {
+            content: '\2714';
+            font-size: 14px;
+            color: white;
+            position: absolute;
+        }
+    </style>
+</head>
+<body>
+
+<div id="app-container">
+    
+    <!-- Splash Screen -->
+    <div id="splash-view">
+        <i class="ph-fill ph-leaf text-6xl mb-4 splash-logo"></i>
+        <h1 class="text-4xl font-bold tracking-tight mb-2">LIFORA</h1>
+        <p class="text-sm opacity-80 font-light">Your everyday life companion</p>
+    </div>
+
+    <!-- HOME VIEW -->
+    <div id="home-view" class="view bg-bgLight">
+        <div class="p-6 pb-2 glass-header">
+            <p id="greeting-text" class="text-textMuted text-sm font-medium">Good Morning 👋</p>
+            <h2 class="text-2xl font-bold text-textMain">Welcome to LIFORA</h2>
+        </div>
+        
+        <div class="p-4 grid gap-4">
+            <!-- Things I Buy Card -->
+            <div onclick="app.navigate('purchases')" class="bg-white rounded-2xl p-4 shadow-sm flex items-center cursor-pointer active:scale-95 transition-transform border border-gray-100">
+                <div class="w-12 h-12 rounded-full bg-accent1 bg-opacity-10 flex items-center justify-center mr-4">
+                    <i class="ph ph-shopping-cart text-2xl text-accent1"></i>
+                </div>
+                <div>
+                    <h3 class="font-bold text-lg text-textMain">Things I Buy</h3>
+                    <p class="text-xs text-textMuted">Track items and expiry dates</p>
+                </div>
+            </div>
+
+            <!-- Medical Card -->
+            <div onclick="app.navigate('medical')" class="bg-white rounded-2xl p-4 shadow-sm flex items-center cursor-pointer active:scale-95 transition-transform border border-gray-100">
+                <div class="w-12 h-12 rounded-full bg-accent2 bg-opacity-10 flex items-center justify-center mr-4">
+                    <i class="ph ph-pill text-2xl text-accent2"></i>
+                </div>
+                <div>
+                    <h3 class="font-bold text-lg text-textMain">Medical</h3>
+                    <p class="text-xs text-textMuted">Medicine info and reminders</p>
+                </div>
+            </div>
+
+            <!-- Timeline Card -->
+            <div onclick="app.navigate('timeline')" class="bg-white rounded-2xl p-4 shadow-sm flex items-center cursor-pointer active:scale-95 transition-transform border border-gray-100">
+                <div class="w-12 h-12 rounded-full bg-accent3 bg-opacity-10 flex items-center justify-center mr-4">
+                    <i class="ph ph-map-pin-line text-2xl text-accent3"></i>
+                </div>
+                <div>
+                    <h3 class="font-bold text-lg text-textMain">My Timeline</h3>
+                    <p class="text-xs text-textMuted">Remember where you were</p>
+                </div>
+            </div>
+
+            <!-- Checklist Card -->
+            <div onclick="app.navigate('checklists')" class="bg-white rounded-2xl p-4 shadow-sm flex items-center cursor-pointer active:scale-95 transition-transform border border-gray-100">
+                <div class="w-12 h-12 rounded-full bg-accent4 bg-opacity-10 flex items-center justify-center mr-4">
+                    <i class="ph ph-backpack text-2xl text-accent4"></i>
+                </div>
+                <div>
+                    <h3 class="font-bold text-lg text-textMain">Leaving Checklist</h3>
+                    <p class="text-xs text-textMuted">Don't forget what you need</p>
+                </div>
+            </div>
+
+            <!-- Food Guide Card -->
+            <div onclick="app.navigate('food')" class="bg-white rounded-2xl p-4 shadow-sm flex items-center cursor-pointer active:scale-95 transition-transform border border-gray-100">
+                <div class="w-12 h-12 rounded-full bg-accent5 bg-opacity-10 flex items-center justify-center mr-4">
+                    <i class="ph ph-apple-podcasts text-2xl text-accent5"></i>
+                </div>
+                <div>
+                    <h3 class="font-bold text-lg text-textMain">Food Guide</h3>
+                    <p class="text-xs text-textMuted">Explore food information</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TODAY VIEW -->
+    <div id="today-view" class="view bg-bgLight">
+        <div class="p-6 pb-4 glass-header">
+            <h2 class="text-2xl font-bold text-textMain">Today</h2>
+            <p id="today-date-text" class="text-textMuted text-sm font-medium"></p>
+        </div>
+        
+        <div class="p-4 flex flex-col gap-6" id="today-content">
+            <!-- Populated by JS -->
+        </div>
+    </div>
+
+    <!-- PROFILE VIEW -->
+    <div id="profile-view" class="view bg-bgLight">
+        <div class="p-6 pb-4 glass-header">
+            <h2 class="text-2xl font-bold text-textMain">Profile</h2>
+        </div>
+        
+        <div class="p-4">
+            <div class="flex items-center mb-8">
+                <div class="w-16 h-16 bg-primary text-white rounded-full flex items-center justify-center text-2xl font-bold mr-4">
+                    LU
+                </div>
+                <div>
+                    <h3 class="text-xl font-bold">LIFORA User</h3>
+                    <p class="text-sm text-textMuted">Local Account</p>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100 mb-6">
+                <div class="p-4 border-b border-gray-100 flex items-center justify-between">
+                    <div class="flex items-center"><i class="ph ph-bell text-xl mr-3 text-gray-500"></i> Notifications</div>
+                    <i class="ph ph-caret-right text-gray-400"></i>
+                </div>
+                <div class="p-4 border-b border-gray-100 flex items-center justify-between">
+                    <div class="flex items-center"><i class="ph ph-shield-check text-xl mr-3 text-gray-500"></i> Privacy</div>
+                    <i class="ph ph-caret-right text-gray-400"></i>
+                </div>
+                <div onclick="app.ui.showFoodPreferencesModal()" class="p-4 border-b border-gray-100 flex items-center justify-between cursor-pointer active:bg-gray-50">
+                    <div class="flex items-center"><i class="ph ph-fork-knife text-xl mr-3 text-gray-500"></i> Food Preferences</div>
+                    <i class="ph ph-caret-right text-gray-400"></i>
+                </div>
+                 <div class="p-4 flex items-center justify-between">
+                    <div class="flex items-center"><i class="ph ph-palette text-xl mr-3 text-gray-500"></i> Appearance</div>
+                    <span class="text-xs text-primary bg-primary bg-opacity-10 px-2 py-1 rounded">Light</span>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 text-center">
+                <i class="ph-fill ph-leaf text-4xl text-primary mb-2 mx-auto"></i>
+                <h3 class="font-bold text-lg">LIFORA</h3>
+                <p class="text-sm text-gray-500 italic mb-4">Your everyday life companion.</p>
+                <p class="text-xs text-gray-400 mb-2">Version 1.0 (Web Prototype)</p>
+                <div class="bg-blue-50 text-blue-700 text-xs p-3 rounded-lg text-left">
+                    <i class="ph ph-info mr-1"></i> Privacy Information: Your V1 records are stored locally on this device using browser storage.
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- MODULE: PURCHASES -->
+    <div id="module-purchases" class="view bg-bgLight">
+        <div class="p-4 glass-header flex items-center">
+            <button onclick="app.navigate('home')" class="p-2 mr-2"><i class="ph ph-arrow-left text-xl"></i></button>
+            <h2 class="text-xl font-bold flex-1">Things I Buy</h2>
+            <button onclick="app.ui.showAddModal('purchase')" class="w-8 h-8 bg-accent1 text-white rounded-full flex items-center justify-center"><i class="ph ph-plus"></i></button>
+        </div>
+        <div class="p-4">
+            <div class="relative mb-4">
+                <i class="ph ph-magnifying-glass absolute left-3 top-3 text-gray-400"></i>
+                <input type="text" id="search-purchases" placeholder="Search items..." class="w-full pl-10 pr-4 py-2 rounded-xl border border-gray-200 focus:outline-none focus:border-accent1" onkeyup="app.modules.purchases.renderList()">
+            </div>
+            <div id="purchases-list" class="flex flex-col gap-3">
+                <!-- List injected here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- MODULE: MEDICAL -->
+    <div id="module-medical" class="view bg-bgLight">
+        <div class="p-4 glass-header flex items-center">
+            <button onclick="app.navigate('home')" class="p-2 mr-2"><i class="ph ph-arrow-left text-xl"></i></button>
+            <h2 class="text-xl font-bold flex-1">Medical</h2>
+            <button onclick="app.ui.showAddModal('medical')" class="w-8 h-8 bg-accent2 text-white rounded-full flex items-center justify-center"><i class="ph ph-plus"></i></button>
+        </div>
+        <!-- Safety Banner -->
+        <div class="bg-red-50 text-red-800 text-xs p-3 mx-4 mt-4 rounded-lg flex items-start border border-red-100">
+            <i class="ph-fill ph-warning-circle text-lg mr-2 mt-0.5"></i>
+            <p><strong>Reminder:</strong> This module is for organization only. It does not replace professional medical advice, diagnosis, or prescription instructions.</p>
+        </div>
+        <div class="p-4">
+            <div class="relative mb-4">
+                <i class="ph ph-magnifying-glass absolute left-3 top-3 text-gray-400"></i>
+                <input type="text" id="search-medical" placeholder="Search medicines..." class="w-full pl-10 pr-4 py-2 rounded-xl border border-gray-200 focus:outline-none focus:border-accent2" onkeyup="app.modules.medical.renderList()">
+            </div>
+            <div id="medical-list" class="flex flex-col gap-3">
+                <!-- List injected here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- MODULE: TIMELINE -->
+    <div id="module-timeline" class="view bg-bgLight">
+        <div class="p-4 glass-header flex items-center">
+            <button onclick="app.navigate('home')" class="p-2 mr-2"><i class="ph ph-arrow-left text-xl"></i></button>
+            <h2 class="text-xl font-bold flex-1">My Timeline</h2>
+            <button onclick="app.ui.showAddModal('timeline')" class="w-8 h-8 bg-accent3 text-white rounded-full flex items-center justify-center"><i class="ph ph-plus"></i></button>
+        </div>
+        <div class="p-4">
+            <div id="timeline-list" class="relative border-l-2 border-accent3 ml-4 pl-6 pb-4 space-y-6">
+                <!-- List injected here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- MODULE: CHECKLISTS -->
+    <div id="module-checklists" class="view bg-bgLight">
+        <div class="p-4 glass-header flex items-center">
+            <button onclick="app.navigate('home')" class="p-2 mr-2"><i class="ph ph-arrow-left text-xl"></i></button>
+            <h2 class="text-xl font-bold flex-1">Leaving Checklist</h2>
+            <button onclick="app.ui.showAddModal('checklist')" class="w-8 h-8 bg-accent4 text-white rounded-full flex items-center justify-center"><i class="ph ph-plus"></i></button>
+        </div>
+        <div class="p-4">
+            <h3 class="text-sm font-bold text-gray-500 mb-3 uppercase tracking-wider">Where are you going?</h3>
+            <div id="checklists-list" class="grid grid-cols-2 gap-3">
+                <!-- List injected here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- MODULE: ACTIVE CHECKLIST -->
+    <div id="module-active-checklist" class="view bg-bgLight">
+        <div class="p-4 glass-header flex items-center">
+            <button onclick="app.navigate('checklists')" class="p-2 mr-2"><i class="ph ph-arrow-left text-xl"></i></button>
+            <h2 class="text-xl font-bold flex-1" id="active-checklist-title">Checklist</h2>
+        </div>
+        <div class="p-4 flex flex-col h-full">
+            <div id="active-checklist-items" class="flex-1 space-y-3 mb-6 bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+                <!-- Items injected here -->
+            </div>
+            <div id="checklist-complete-msg" class="hidden text-center p-4 bg-green-50 text-green-700 rounded-xl mb-4 font-bold border border-green-200">
+                You are ready to go! 🎒
+            </div>
+            <button onclick="app.modules.checklists.resetActive()" class="btn-secondary mt-auto">Reset Checklist</button>
+        </div>
+    </div>
+
+    <!-- MODULE: FOOD GUIDE -->
+    <div id="module-food" class="view bg-bgLight">
+        <div class="p-4 glass-header flex items-center">
+            <button onclick="app.navigate('home')" class="p-2 mr-2"><i class="ph ph-arrow-left text-xl"></i></button>
+            <h2 class="text-xl font-bold flex-1">Food Guide</h2>
+        </div>
+        <div class="p-4">
+            <div class="relative mb-6">
+                <i class="ph ph-magnifying-glass absolute left-3 top-3 text-gray-400 text-lg"></i>
+                <input type="text" id="search-food" placeholder="Search food (e.g., Banana, Milk)..." class="w-full pl-10 pr-4 py-3 rounded-xl border-2 border-accent5 border-opacity-30 focus:outline-none focus:border-opacity-100 text-lg shadow-sm" onkeyup="app.modules.food.search(event)">
+            </div>
+            
+            <div id="food-results" class="space-y-4">
+                <!-- Empty State default -->
+                <div class="text-center py-10 text-gray-400">
+                    <i class="ph-fill ph-apple-podcasts text-5xl mb-2 opacity-50"></i>
+                    <p>Search for a food to explore general information.</p>
+                </div>
+            </div>
+            
+            <div class="mt-8 text-xs text-gray-400 text-center px-4">
+                Information provided is general. For packaged foods, check the label. For allergies or medical conditions, consult a healthcare professional.
+            </div>
+        </div>
+    </div>
+
+
+    <div id="bottom-nav">
+        <div class="nav-item active" onclick="app.navigate('home')" id="nav-home">
+            <i class="ph-fill ph-house"></i>
+            <span>HOME</span>
+        </div>
+        <div class="nav-item" onclick="app.navigate('today')" id="nav-today">
+            <i class="ph ph-calendar-blank"></i>
+            <span>TODAY</span>
+        </div>
+        
+        <!-- Quick Add FAB -->
+        <div class="nav-item" onclick="app.ui.showQuickAdd()" style="width: 70px;">
+            <div id="fab-add">
+                <i class="ph ph-plus text-2xl font-bold text-white"></i>
+            </div>
+        </div>
+        
+        <div class="nav-item" onclick="app.navigate('profile')" id="nav-profile">
+            <i class="ph ph-user"></i>
+            <span>PROFILE</span>
+        </div>
+    </div>
+
+    
+    <!-- Quick Add Modal -->
+    <div id="modal-quick-add" class="modal-overlay" onclick="app.ui.closeModals(event)">
+        <div class="modal-content pb-8">
+            <div class="w-12 h-1 bg-gray-300 rounded-full mx-auto mb-6"></div>
+            <h3 class="text-lg font-bold mb-1">Quick Add</h3>
+            <p class="text-sm text-gray-500 mb-6">What do you want LIFORA to remember?</p>
+            
+            <div class="grid grid-cols-2 gap-3">
+                <button onclick="app.ui.showAddModal('purchase')" class="flex flex-col items-center justify-center p-4 bg-white border border-gray-200 rounded-xl active:bg-gray-50">
+                    <div class="w-10 h-10 rounded-full bg-accent1 bg-opacity-10 text-accent1 flex items-center justify-center mb-2"><i class="ph-fill ph-shopping-cart text-xl"></i></div>
+                    <span class="text-sm font-medium">Add Purchase</span>
+                </button>
+                <button onclick="app.ui.showAddModal('medical')" class="flex flex-col items-center justify-center p-4 bg-white border border-gray-200 rounded-xl active:bg-gray-50">
+                    <div class="w-10 h-10 rounded-full bg-accent2 bg-opacity-10 text-accent2 flex items-center justify-center mb-2"><i class="ph-fill ph-pill text-xl"></i></div>
+                    <span class="text-sm font-medium">Add Medicine</span>
+                </button>
+                <button onclick="app.ui.showAddModal('timeline')" class="flex flex-col items-center justify-center p-4 bg-white border border-gray-200 rounded-xl active:bg-gray-50">
+                    <div class="w-10 h-10 rounded-full bg-accent3 bg-opacity-10 text-accent3 flex items-center justify-center mb-2"><i class="ph-fill ph-map-pin text-xl"></i></div>
+                    <span class="text-sm font-medium">Add Timeline</span>
+                </button>
+                <button onclick="app.ui.showAddModal('checklist')" class="flex flex-col items-center justify-center p-4 bg-white border border-gray-200 rounded-xl active:bg-gray-50">
+                    <div class="w-10 h-10 rounded-full bg-accent4 bg-opacity-10 text-accent4 flex items-center justify-center mb-2"><i class="ph-fill ph-backpack text-xl"></i></div>
+                    <span class="text-sm font-medium">Create Checklist</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Generic Form Modal Container -->
+    <div id="modal-form" class="modal-overlay" onclick="app.ui.closeModals(event)">
+        <div class="modal-content h-[85vh] flex flex-col" onclick="event.stopPropagation()">
+            <div class="flex justify-between items-center mb-4 pb-2 border-b border-gray-100">
+                <h3 id="form-title" class="text-xl font-bold">Add Item</h3>
+                <button onclick="app.ui.hideModal('modal-form')" class="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center"><i class="ph ph-x"></i></button>
+            </div>
+            <div id="form-body" class="flex-1 overflow-y-auto pb-4">
+                <!-- Form fields injected here -->
+            </div>
+            <div class="pt-4 mt-auto border-t border-gray-100 bg-white">
+                <button id="form-save-btn" class="btn-primary">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Confirmation Modal -->
+    <div id="modal-confirm" class="modal-overlay" onclick="app.ui.closeModals(event)">
+        <div class="modal-content bg-white" onclick="event.stopPropagation()">
+            <h3 class="text-lg font-bold mb-2 text-red-600 flex items-center"><i class="ph-fill ph-warning-circle mr-2 text-xl"></i> Confirm Deletion</h3>
+            <p class="text-gray-600 mb-6" id="confirm-msg">Delete this item?</p>
+            <div class="flex gap-3">
+                <button onclick="app.ui.hideModal('modal-confirm')" class="btn-secondary flex-1">Cancel</button>
+                <button id="confirm-yes-btn" class="flex-1 bg-red-600 text-white p-3 rounded-lg font-bold active:bg-red-700">Delete</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Food Preferences Modal -->
+    <div id="modal-food-prefs" class="modal-overlay" onclick="app.ui.closeModals(event)">
+        <div class="modal-content" onclick="event.stopPropagation()">
+             <div class="flex justify-between items-center mb-4 pb-2 border-b border-gray-100">
+                <h3 class="text-xl font-bold">Food Preferences</h3>
+                <button onclick="app.ui.hideModal('modal-food-prefs')" class="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center"><i class="ph ph-x"></i></button>
+            </div>
+            <div class="space-y-4">
+                <div class="input-group">
+                    <label class="input-label">Diet Preference</label>
+                    <select id="pref-diet" class="input-field">
+                        <option value="None">None</option>
+                        <option value="Vegetarian">Vegetarian</option>
+                        <option value="Vegan">Vegan</option>
+                        <option value="Pescatarian">Pescatarian</option>
+                        <option value="Keto">Keto</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label class="input-label">Foods to Avoid (comma separated)</label>
+                    <input type="text" id="pref-avoid" class="input-field" placeholder="e.g., peanuts, shellfish">
+                </div>
+                <button onclick="app.modules.food.savePrefs()" class="btn-primary">Save Preferences</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toast-container"></div>
+
+</div>
+
+<script>
+/**
+ * LIFORA Application Logic
+ * Architecture: Singleton pattern encapsulating state, UI logic, storage, and modules.
+ */
+const app = {
+    state: {
+        currentView: 'home',
+        editingId: null, // Track ID when editing an item
+        activeChecklistId: null
+    },
+
+    storage: {
+        keys: {
+            purchases: 'lifora_purchases',
+            medical: 'lifora_medical',
+            timeline: 'lifora_timeline',
+            checklists: 'lifora_checklists',
+            foodPrefs: 'lifora_food_prefs'
+        },
+        get: function(key) {
+            try {
+                const data = localStorage.getItem(this.keys[key]);
+                return data ? JSON.parse(data) : [];
+            } catch (e) {
+                console.error("Storage read error", e);
+                return [];
+            }
+        },
+        set: function(key, data) {
+            try {
+                localStorage.setItem(this.keys[key], JSON.stringify(data));
+            } catch (e) {
+                console.error("Storage write error", e);
+                app.ui.toast("Storage limit reached or error occurred.");
+            }
+        },
+        getPrefs: function() {
+             try {
+                const data = localStorage.getItem(this.keys.foodPrefs);
+                return data ? JSON.parse(data) : { diet: 'None', avoid: '' };
+            } catch (e) { return { diet: 'None', avoid: '' }; }
+        },
+        setPrefs: function(data) {
+             localStorage.setItem(this.keys.foodPrefs, JSON.stringify(data));
+        }
+    },
+
+    ui: {
+        toast: function(message) {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.innerText = message;
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        },
+        updateNav: function(viewId) {
+            document.querySelectorAll('.nav-item').forEach(el => {
+                if(el.id) { // skip FAB
+                    el.classList.remove('active');
+                    const icon = el.querySelector('i');
+                    icon.classList.remove('ph-fill');
+                    icon.classList.add('ph');
+                }
+            });
+            const activeNav = document.getElementById(`nav-${viewId}`);
+            if (activeNav) {
+                activeNav.classList.add('active');
+                const icon = activeNav.querySelector('i');
+                icon.classList.remove('ph');
+                icon.classList.add('ph-fill');
+            }
+        },
+        showModal: function(id) {
+            document.getElementById(id).classList.add('active');
+        },
+        hideModal: function(id) {
+            document.getElementById(id).classList.remove('active');
+        },
+        closeModals: function(e) {
+            if (e.target.classList.contains('modal-overlay')) {
+                e.target.classList.remove('active');
+            }
+        },
+        showQuickAdd: function() {
+            this.showModal('modal-quick-add');
+        },
+        
+        showAddModal: function(type, editData = null) {
+            this.hideModal('modal-quick-add');
+            const formBody = document.getElementById('form-body');
+            const formTitle = document.getElementById('form-title');
+            const saveBtn = document.getElementById('form-save-btn');
+            
+            app.state.editingId = editData ? editData.id : null;
+            formBody.innerHTML = ''; // clear
+
+            let html = '';
+            
+            if (type === 'purchase') {
+                formTitle.innerText = editData ? "Edit Purchase" : "Add Purchase";
+                html = `
+                    <div class="input-group">
+                        <label class="input-label">Item Name *</label>
+                        <input type="text" id="f-p-name" class="input-field" placeholder="e.g., Milk" value="${editData?.name || ''}">
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label">Category</label>
+                        <select id="f-p-cat" class="input-field">
+                            <option value="Food" ${editData?.category === 'Food' ? 'selected' : ''}>Food</option>
+                            <option value="Household" ${editData?.category === 'Household' ? 'selected' : ''}>Household</option>
+                            <option value="Cosmetics" ${editData?.category === 'Cosmetics' ? 'selected' : ''}>Cosmetics</option>
+                            <option value="Other" ${editData?.category === 'Other' ? 'selected' : ''}>Other</option>
+                        </select>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="input-group">
+                            <label class="input-label">Purchase Date</label>
+                            <input type="date" id="f-p-pdate" class="input-field" value="${editData?.purchaseDate || this.getTodayDate()}">
+                        </div>
+                        <div class="input-group">
+                            <label class="input-label">Expiry Date *</label>
+                            <input type="date" id="f-p-edate" class="input-field" value="${editData?.expiryDate || ''}">
+                        </div>
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label">Reminder Before Expiry</label>
+                        <select id="f-p-rem" class="input-field">
+                            <option value="0" ${editData?.reminderDays === '0' ? 'selected' : ''}>On expiry day</option>
+                            <option value="1" ${editData?.reminderDays === '1' ? 'selected' : (!editData ? 'selected' : '')}>1 day before</option>
+                            <option value="3" ${editData?.reminderDays === '3' ? 'selected' : ''}>3 days before</option>
+                            <option value="7" ${editData?.reminderDays === '7' ? 'selected' : ''}>7 days before</option>
+                            <option value="-1" ${editData?.reminderDays === '-1' ? 'selected' : ''}>No reminder</option>
+                        </select>
+                    </div>
+                `;
+                saveBtn.onclick = () => app.modules.purchases.save();
+            } 
+            else if (type === 'medical') {
+                formTitle.innerText = editData ? "Edit Medicine" : "Add Medicine";
+                html = `
+                    <div class="input-group">
+                        <label class="input-label">Medicine Name *</label>
+                        <input type="text" id="f-m-name" class="input-field" placeholder="e.g., Paracetamol" value="${editData?.name || ''}">
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label">Type</label>
+                        <select id="f-m-type" class="input-field">
+                            <option value="Tablet" ${editData?.type === 'Tablet' ? 'selected' : ''}>Tablet</option>
+                            <option value="Syrup" ${editData?.type === 'Syrup' ? 'selected' : ''}>Syrup</option>
+                            <option value="Drops" ${editData?.type === 'Drops' ? 'selected' : ''}>Drops</option>
+                            <option value="Cream/Ointment" ${editData?.type === 'Cream/Ointment' ? 'selected' : ''}>Cream/Ointment</option>
+                            <option value="Other" ${editData?.type === 'Other' ? 'selected' : ''}>Other</option>
+                        </select>
+                    </div>
+                     <div class="grid grid-cols-2 gap-4">
+                        <div class="input-group">
+                            <label class="input-label">Purchase Date</label>
+                            <input type="date" id="f-m-pdate" class="input-field" value="${editData?.purchaseDate || this.getTodayDate()}">
+                        </div>
+                        <div class="input-group">
+                            <label class="input-label">Expiry Date *</label>
+                            <input type="date" id="f-m-edate" class="input-field" value="${editData?.expiryDate || ''}">
+                        </div>
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label">Reminder Before Expiry</label>
+                        <select id="f-m-rem" class="input-field">
+                            <option value="1" ${editData?.reminderDays === '1' ? 'selected' : ''}>1 day before</option>
+                            <option value="3" ${editData?.reminderDays === '3' ? 'selected' : ''}>3 days before</option>
+                            <option value="7" ${editData?.reminderDays === '7' ? 'selected' : (!editData ? 'selected' : '')}>7 days before</option>
+                            <option value="30" ${editData?.reminderDays === '30' ? 'selected' : ''}>30 days before</option>
+                             <option value="-1" ${editData?.reminderDays === '-1' ? 'selected' : ''}>No reminder</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label">Notes</label>
+                        <input type="text" id="f-m-notes" class="input-field" placeholder="Optional notes" value="${editData?.notes || ''}">
+                    </div>
+                `;
+                saveBtn.onclick = () => app.modules.medical.save();
+            }
+            else if (type === 'timeline') {
+                formTitle.innerText = editData ? "Edit Timeline Entry" : "Add Timeline Entry";
+                html = `
+                    <div class="input-group">
+                        <label class="input-label">Place Name *</label>
+                        <input type="text" id="f-t-place" class="input-field" placeholder="e.g., College" value="${editData?.place || ''}">
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label">Date *</label>
+                        <input type="date" id="f-t-date" class="input-field" value="${editData?.date || this.getTodayDate()}">
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="input-group">
+                            <label class="input-label">Arrival Time *</label>
+                            <input type="time" id="f-t-arr" class="input-field" value="${editData?.arrivalTime || ''}">
+                        </div>
+                        <div class="input-group">
+                            <label class="input-label">Leaving Time</label>
+                            <input type="time" id="f-t-dep" class="input-field" value="${editData?.leavingTime || ''}">
+                        </div>
+                    </div>
+                     <div class="input-group">
+                        <label class="input-label">Notes</label>
+                        <input type="text" id="f-t-notes" class="input-field" placeholder="Optional notes" value="${editData?.notes || ''}">
+                    </div>
+                `;
+                saveBtn.onclick = () => app.modules.timeline.save();
+            }
+            else if (type === 'checklist') {
+                formTitle.innerText = editData ? "Edit Checklist" : "Create Checklist Template";
+                let itemsListHtml = '';
+                if(editData && editData.items) {
+                    itemsListHtml = editData.items.map(i => i.name).join('\n');
+                }
+                html = `
+                    <div class="input-group">
+                        <label class="input-label">Destination Name *</label>
+                        <input type="text" id="f-c-dest" class="input-field" placeholder="e.g., College, Gym" value="${editData?.destination || ''}">
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label">Items (one per line) *</label>
+                        <textarea id="f-c-items" class="input-field" rows="6" placeholder="ID Card\nLaptop\nCharger\nWater Bottle">${itemsListHtml}</textarea>
+                    </div>
+                `;
+                saveBtn.onclick = () => app.modules.checklists.save();
+            }
+
+            formBody.innerHTML = html;
+            this.showModal('modal-form');
+        },
+        
+        getTodayDate: function() {
+            const today = new Date();
+            return today.toISOString().split('T')[0];
+        },
+        
+        showConfirm: function(message, onConfirm) {
+            document.getElementById('confirm-msg').innerText = message;
+            document.getElementById('confirm-yes-btn').onclick = () => {
+                onConfirm();
+                this.hideModal('modal-confirm');
+            };
+            this.showModal('modal-confirm');
+        },
+
+        showFoodPreferencesModal: function() {
+            const prefs = app.storage.getPrefs();
+            document.getElementById('pref-diet').value = prefs.diet || 'None';
+            document.getElementById('pref-avoid').value = prefs.avoid || '';
+            this.showModal('modal-food-prefs');
+        },
+        
+        // Form Validation helper
+        validateDates: function(pDate, eDate) {
+            if(!eDate) return "Expiry date is required.";
+            if(pDate && eDate) {
+                if(new Date(eDate) < new Date(pDate)) {
+                    return "Expiry date cannot be earlier than purchase date.";
+                }
+            }
+            return null;
+        }
+    },
+
+    navigate: function(viewId) {
+        // Hide all views
+        document.querySelectorAll('.view').forEach(el => {
+            el.classList.remove('active');
+            el.classList.add('hide');
+        });
+        
+        // Reset specific UI states if needed
+        document.getElementById('checklist-complete-msg').classList.add('hidden');
+        document.getElementById('search-food').value = '';
+        document.getElementById('food-results').innerHTML = `
+            <div class="text-center py-10 text-gray-400">
+                <i class="ph-fill ph-apple-podcasts text-5xl mb-2 opacity-50"></i>
+                <p>Search for a food to explore general information.</p>
+            </div>
+        `;
+
+        let targetId = '';
+        switch(viewId) {
+            case 'home': targetId = 'home-view'; break;
+            case 'today': 
+                targetId = 'today-view'; 
+                app.modules.today.render();
+                break;
+            case 'profile': targetId = 'profile-view'; break;
+            case 'purchases': 
+                targetId = 'module-purchases'; 
+                app.modules.purchases.renderList();
+                break;
+            case 'medical': 
+                targetId = 'module-medical'; 
+                app.modules.medical.renderList();
+                break;
+            case 'timeline': 
+                targetId = 'module-timeline'; 
+                app.modules.timeline.renderList();
+                break;
+            case 'checklists': 
+                targetId = 'module-checklists'; 
+                app.modules.checklists.renderList();
+                break;
+            case 'active-checklist':
+                targetId = 'module-active-checklist';
+                break;
+            case 'food':
+                targetId = 'module-food';
+                break;
+            default: targetId = 'home-view';
+        }
+
+        // Show target
+        const targetEl = document.getElementById(targetId);
+        if(targetEl) {
+            targetEl.classList.remove('hide');
+            // Small delay to allow display:flex to apply before adding active for animation
+            setTimeout(() => targetEl.classList.add('active'), 10);
+        }
+
+        // Update Nav visually if it's a root view
+        if(['home', 'today', 'profile'].includes(viewId)) {
+            this.ui.updateNav(viewId);
+        }
+        
+        this.state.currentView = viewId;
+        window.scrollTo(0, 0);
+    },
+
+    modules: {
+        purchases: {
+            save: function() {
+                const name = document.getElementById('f-p-name').value.trim();
+                const cat = document.getElementById('f-p-cat').value;
+                const pDate = document.getElementById('f-p-pdate').value;
+                const eDate = document.getElementById('f-p-edate').value;
+                const rem = document.getElementById('f-p-rem').value;
+
+                if (!name) return app.ui.toast("Please enter an item name.");
+                const dateErr = app.ui.validateDates(pDate, eDate);
+                if (dateErr) return app.ui.toast(dateErr);
+
+                let items = app.storage.get('purchases');
+                
+                if (app.state.editingId) {
+                    const idx = items.findIndex(i => i.id === app.state.editingId);
+                    if(idx > -1) {
+                        items[idx] = { ...items[idx], name, category: cat, purchaseDate: pDate, expiryDate: eDate, reminderDays: rem };
+                    }
+                } else {
+                    items.push({ id: uuid.v4(), name, category: cat, purchaseDate: pDate, expiryDate: eDate, reminderDays: rem });
+                }
+
+                app.storage.set('purchases', items);
+                app.ui.hideModal('modal-form');
+                app.ui.toast("Item saved successfully.");
+                
+                if(app.state.currentView === 'purchases') this.renderList();
+                // Simulate notification scheduling
+                if(rem !== '-1') console.log(`Scheduled notification for ${name} ${rem} days before ${eDate}`);
+            },
+            delete: function(id) {
+                app.ui.showConfirm("Delete this purchase item?", () => {
+                    let items = app.storage.get('purchases');
+                    items = items.filter(i => i.id !== id);
+                    app.storage.set('purchases', items);
+                    this.renderList();
+                    app.ui.toast("Item deleted.");
+                });
+            },
+            edit: function(id) {
+                const items = app.storage.get('purchases');
+                const item = items.find(i => i.id === id);
+                if(item) app.ui.showAddModal('purchase', item);
+            },
+            renderList: function() {
+                const container = document.getElementById('purchases-list');
+                const term = document.getElementById('search-purchases').value.toLowerCase();
+                let items = app.storage.get('purchases');
+                
+                if(term) items = items.filter(i => i.name.toLowerCase().includes(term));
+                
+                // Sort by expiry
+                items.sort((a,b) => new Date(a.expiryDate) - new Date(b.expiryDate));
+
+                if (items.length === 0) {
+                    container.innerHTML = `
+                        <div class="text-center py-10 text-gray-400">
+                            <i class="ph ph-shopping-cart text-5xl mb-2"></i>
+                            <p>No items found.</p>
+                            ${!term ? '<p class="text-sm mt-2">Add something you want LIFORA to remember.</p>' : ''}
+                        </div>`;
+                    return;
+                }
+
+                const today = new Date();
+                today.setHours(0,0,0,0);
+
+                container.innerHTML = items.map(item => {
+                    const expDate = new Date(item.expiryDate);
+                    const diffTime = expDate - today;
+                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                    
+                    let statusColor = "text-gray-500";
+                    let statusText = `Expires ${dateFns.format(expDate, 'dd MMM yyyy')}`;
+                    
+                    if (diffDays < 0) {
+                        statusColor = "text-red-600 font-bold";
+                        statusText = "Expired!";
+                    } else if (diffDays <= 3) {
+                        statusColor = "text-orange-500 font-bold";
+                        statusText = `Expires in ${diffDays} day(s)`;
+                    }
+
+                    return `
+                    <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex items-center justify-between">
+                        <div class="flex-1">
+                            <h4 class="font-bold text-lg">${item.name}</h4>
+                            <p class="text-sm text-gray-500">${item.category}</p>
+                            <p class="text-sm ${statusColor} mt-1 flex items-center">
+                                <i class="ph ph-clock mr-1"></i> ${statusText}
+                            </p>
+                            ${item.reminderDays !== '-1' ? '<p class="text-xs text-accent1 mt-1"><i class="ph-fill ph-bell text-xs"></i> Reminder enabled</p>' : ''}
+                        </div>
+                        <div class="flex flex-col gap-2 ml-4">
+                            <button onclick="app.modules.purchases.edit('${item.id}')" class="w-8 h-8 rounded-full bg-gray-100 text-gray-600 flex items-center justify-center active:bg-gray-200"><i class="ph ph-pencil-simple"></i></button>
+                            <button onclick="app.modules.purchases.delete('${item.id}')" class="w-8 h-8 rounded-full bg-red-50 text-red-500 flex items-center justify-center active:bg-red-100"><i class="ph ph-trash"></i></button>
+                        </div>
+                    </div>`;
+                }).join('');
+            }
+        },
+
+        medical: {
+            save: function() {
+                const name = document.getElementById('f-m-name').value.trim();
+                const type = document.getElementById('f-m-type').value;
+                const pDate = document.getElementById('f-m-pdate').value;
+                const eDate = document.getElementById('f-m-edate').value;
+                const rem = document.getElementById('f-m-rem').value;
+                const notes = document.getElementById('f-m-notes').value;
+
+                if (!name) return app.ui.toast("Please enter a medicine name.");
+                const dateErr = app.ui.validateDates(pDate, eDate);
+                if (dateErr) return app.ui.toast(dateErr);
+
+                let items = app.storage.get('medical');
+                
+                if (app.state.editingId) {
+                    const idx = items.findIndex(i => i.id === app.state.editingId);
+                    if(idx > -1) {
+                        items[idx] = { ...items[idx], name, type, purchaseDate: pDate, expiryDate: eDate, reminderDays: rem, notes };
+                    }
+                } else {
+                    items.push({ id: uuid.v4(), name, type, purchaseDate: pDate, expiryDate: eDate, reminderDays: rem, notes });
+                }
+
+                app.storage.set('medical', items);
+                app.ui.hideModal('modal-form');
+                app.ui.toast("Medicine saved.");
+                
+                if(app.state.currentView === 'medical') this.renderList();
+            },
+            delete: function(id) {
+                app.ui.showConfirm("Delete this medicine record?", () => {
+                    let items = app.storage.get('medical');
+                    items = items.filter(i => i.id !== id);
+                    app.storage.set('medical', items);
+                    this.renderList();
+                    app.ui.toast("Record deleted.");
+                });
+            },
+            edit: function(id) {
+                const items = app.storage.get('medical');
+                const item = items.find(i => i.id === id);
+                if(item) app.ui.showAddModal('medical', item);
+            },
+            renderList: function() {
+                const container = document.getElementById('medical-list');
+                const term = document.getElementById('search-medical').value.toLowerCase();
+                let items = app.storage.get('medical');
+                
+                if(term) items = items.filter(i => i.name.toLowerCase().includes(term));
+                items.sort((a,b) => new Date(a.expiryDate) - new Date(b.expiryDate));
+
+                if (items.length === 0) {
+                    container.innerHTML = `
+                        <div class="text-center py-10 text-gray-400">
+                            <i class="ph ph-pill text-5xl mb-2"></i>
+                            <p>No medicine records yet.</p>
+                        </div>`;
+                    return;
+                }
+
+                const today = new Date();
+                today.setHours(0,0,0,0);
+
+                container.innerHTML = items.map(item => {
+                    const expDate = new Date(item.expiryDate);
+                    const diffDays = Math.ceil((expDate - today) / (1000 * 60 * 60 * 24));
+                    
+                    let statusColor = "text-gray-500";
+                    let statusText = `Expires ${dateFns.format(expDate, 'dd MMM yyyy')}`;
+                    if (diffDays < 0) { statusColor = "text-red-600 font-bold"; statusText = "Expired! Do not use."; } 
+                    else if (diffDays <= 30) { statusColor = "text-accent4 font-bold"; statusText = `Expiring soon (${diffDays} days)`; }
+
+                    return `
+                    <div class="bg-white p-4 rounded-xl shadow-sm border border-l-4 border-l-accent2 flex justify-between">
+                        <div class="flex-1">
+                            <h4 class="font-bold text-lg text-textMain">${item.name}</h4>
+                            <p class="text-sm font-medium text-gray-500">${item.type}</p>
+                            <p class="text-sm mt-2 ${statusColor}">${statusText}</p>
+                            ${item.notes ? `<p class="text-xs text-gray-400 mt-1 italic">"${item.notes}"</p>` : ''}
+                        </div>
+                         <div class="flex flex-col gap-2 ml-2">
+                            <button onclick="app.modules.medical.edit('${item.id}')" class="p-2 text-gray-400 hover:text-gray-700"><i class="ph ph-pencil-simple text-xl"></i></button>
+                            <button onclick="app.modules.medical.delete('${item.id}')" class="p-2 text-red-300 hover:text-red-600"><i class="ph ph-trash text-xl"></i></button>
+                        </div>
+                    </div>`;
+                }).join('');
+            }
+        },
+
+        timeline: {
+            save: function() {
+                const place = document.getElementById('f-t-place').value.trim();
+                const date = document.getElementById('f-t-date').value;
+                const arr = document.getElementById('f-t-arr').value;
+                const dep = document.getElementById('f-t-dep').value;
+                const notes = document.getElementById('f-t-notes').value;
+
+                if (!place || !date || !arr) return app.ui.toast("Place, Date, and Arrival Time are required.");
+
+                let items = app.storage.get('timeline');
+                
+                if (app.state.editingId) {
+                    const idx = items.findIndex(i => i.id === app.state.editingId);
+                    if(idx > -1) items[idx] = { ...items[idx], place, date, arrivalTime: arr, leavingTime: dep, notes };
+                } else {
+                    items.push({ id: uuid.v4(), place, date, arrivalTime: arr, leavingTime: dep, notes });
+                }
+
+                app.storage.set('timeline', items);
+                app.ui.hideModal('modal-form');
+                app.ui.toast("Timeline entry saved.");
+                if(app.state.currentView === 'timeline') this.renderList();
+            },
+            delete: function(id) {
+                app.ui.showConfirm("Delete this timeline entry?", () => {
+                    let items = app.storage.get('timeline');
+                    items = items.filter(i => i.id !== id);
+                    app.storage.set('timeline', items);
+                    this.renderList();
+                    app.ui.toast("Entry deleted.");
+                });
+            },
+            renderList: function() {
+                const container = document.getElementById('timeline-list');
+                let items = app.storage.get('timeline');
+                
+                // Sort descending (newest first)
+                items.sort((a,b) => {
+                    const dateA = new Date(a.date + 'T' + (a.arrivalTime||'00:00'));
+                    const dateB = new Date(b.date + 'T' + (b.arrivalTime||'00:00'));
+                    return dateB - dateA;
+                });
+
+                if (items.length === 0) {
+                    container.className = ""; // remove line
+                    container.innerHTML = `
+                        <div class="text-center py-10 text-gray-400">
+                            <i class="ph ph-map-pin-line text-5xl mb-2"></i>
+                            <p>No timeline entries yet.</p>
+                        </div>`;
+                    return;
+                }
+                
+                container.className = "relative border-l-2 border-accent3 ml-4 pl-6 pb-4 space-y-6";
+
+                // Group by date
+                let lastDate = '';
+                let html = '';
+
+                items.forEach(item => {
+                    const formatTime = (time24) => {
+                        if(!time24) return '';
+                        const [h,m] = time24.split(':');
+                        const date = new Date(); date.setHours(h,m);
+                        return date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                    };
+
+                    const displayDate = dateFns.format(new Date(item.date), 'dd MMMM yyyy');
+                    if (displayDate !== lastDate) {
+                        html += `<div class="font-bold text-gray-500 text-sm bg-bgLight py-1 -ml-10 pl-4 sticky top-16 z-10">${displayDate}</div>`;
+                        lastDate = displayDate;
+                    }
+
+                    html += `
+                    <div class="relative bg-white p-3 rounded-xl shadow-sm border border-gray-100">
+                        <div class="absolute -left-[31px] top-4 w-4 h-4 rounded-full bg-accent3 border-4 border-bgLight"></div>
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <h4 class="font-bold text-lg">${item.place}</h4>
+                                <p class="text-sm text-accent3 font-medium">
+                                    ${formatTime(item.arrivalTime)} ${item.leavingTime ? '- ' + formatTime(item.leavingTime) : ''}
+                                </p>
+                                ${item.notes ? `<p class="text-xs text-gray-500 mt-1">${item.notes}</p>` : ''}
+                            </div>
+                            <div class="flex">
+                                <button onclick="app.ui.showAddModal('timeline', ${JSON.stringify(item).replace(/"/g, '&quot;')})" class="p-1 text-gray-400"><i class="ph ph-pencil-simple"></i></button>
+                                <button onclick="app.modules.timeline.delete('${item.id}')" class="p-1 text-red-300"><i class="ph ph-trash"></i></button>
+                            </div>
+                        </div>
+                    </div>`;
+                });
+                container.innerHTML = html;
+            }
+        },
+
+        checklists: {
+            save: function() {
+                const dest = document.getElementById('f-c-dest').value.trim();
+                const itemsText = document.getElementById('f-c-items').value.trim();
+
+                if (!dest) return app.ui.toast("Please enter a destination.");
+                if (!itemsText) return app.ui.toast("Please add at least one item.");
+
+                // Parse newline separated items
+                const checklistItems = itemsText.split('\n')
+                    .map(line => line.trim())
+                    .filter(line => line.length > 0)
+                    .map(name => ({ id: uuid.v4(), name: name, checked: false }));
+
+                let lists = app.storage.get('checklists');
+                
+                if (app.state.editingId) {
+                    const idx = lists.findIndex(i => i.id === app.state.editingId);
+                    if(idx > -1) {
+                        // Keep checked status if editing name of existing item, otherwise reset
+                        const oldItems = lists[idx].items;
+                        checklistItems.forEach(newItem => {
+                            const oldItem = oldItems.find(o => o.name.toLowerCase() === newItem.name.toLowerCase());
+                            if(oldItem) newItem.checked = oldItem.checked;
+                        });
+                        lists[idx] = { ...lists[idx], destination: dest, items: checklistItems };
+                    }
+                } else {
+                    lists.push({ id: uuid.v4(), destination: dest, items: checklistItems });
+                }
+
+                app.storage.set('checklists', lists);
+                app.ui.hideModal('modal-form');
+                app.ui.toast("Checklist saved.");
+                if(app.state.currentView === 'checklists') this.renderList();
+            },
+            delete: function(id, e) {
+                if(e) e.stopPropagation();
+                app.ui.showConfirm("Delete this checklist template?", () => {
+                    let lists = app.storage.get('checklists');
+                    lists = lists.filter(i => i.id !== id);
+                    app.storage.set('checklists', lists);
+                    this.renderList();
+                });
+            },
+            edit: function(id, e) {
+                if(e) e.stopPropagation();
+                const lists = app.storage.get('checklists');
+                const list = lists.find(i => i.id === id);
+                if(list) app.ui.showAddModal('checklist', list);
+            },
+            open: function(id) {
+                app.state.activeChecklistId = id;
+                this.renderActive();
+                app.navigate('active-checklist');
+            },
+            renderList: function() {
+                const container = document.getElementById('checklists-list');
+                const lists = app.storage.get('checklists');
+
+                if (lists.length === 0) {
+                    container.parentElement.innerHTML = `
+                        <div class="text-center py-10 text-gray-400 col-span-2">
+                            <i class="ph ph-backpack text-5xl mb-2"></i>
+                            <p>Create your first destination checklist.</p>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                // reset container logic since empty state overwrites parent
+                const parent = container.parentElement;
+                if(!parent.querySelector('#checklists-list')) {
+                     parent.innerHTML = `<h3 class="text-sm font-bold text-gray-500 mb-3 uppercase tracking-wider">Where are you going?</h3>
+                                        <div id="checklists-list" class="grid grid-cols-2 gap-3"></div>`;
+                }
+                const grid = document.getElementById('checklists-list');
+
+                grid.innerHTML = lists.map(list => {
+                    const checkedCount = list.items.filter(i => i.checked).length;
+                    const total = list.items.length;
+                    const isComplete = total > 0 && checkedCount === total;
+
+                    return `
+                    <div onclick="app.modules.checklists.open('${list.id}')" class="bg-white p-4 rounded-xl shadow-sm border ${isComplete ? 'border-green-400 bg-green-50' : 'border-gray-100'} active:scale-95 transition-transform flex flex-col items-center justify-center text-center cursor-pointer relative h-32">
+                        <div class="absolute top-2 right-2 flex gap-1">
+                             <button onclick="app.modules.checklists.edit('${list.id}', event)" class="p-1 text-gray-300 hover:text-gray-600"><i class="ph-fill ph-pencil-simple"></i></button>
+                             <button onclick="app.modules.checklists.delete('${list.id}', event)" class="p-1 text-gray-300 hover:text-red-500"><i class="ph-fill ph-x-circle"></i></button>
+                        </div>
+                        <i class="ph-fill ph-map-pin text-2xl text-accent4 mb-2"></i>
+                        <h4 class="font-bold text-textMain line-clamp-1 w-full">${list.destination}</h4>
+                        <div class="text-xs font-medium mt-2 px-2 py-1 rounded-full ${isComplete ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}">
+                            ${checkedCount}/${total}
+                        </div>
+                    </div>`;
+                }).join('');
+            },
+            renderActive: function() {
+                const lists = app.storage.get('checklists');
+                const list = lists.find(i => i.id === app.state.activeChecklistId);
+                if(!list) return app.navigate('checklists');
+
+                document.getElementById('active-checklist-title').innerText = list.destination.toUpperCase();
+                const container = document.getElementById('active-checklist-items');
+                
+                container.innerHTML = list.items.map((item, index) => `
+                    <div class="flex items-center p-2 rounded-lg ${item.checked ? 'bg-gray-50 opacity-60' : ''}" onclick="app.modules.checklists.toggleItem(${index})">
+                        <input type="checkbox" class="custom-checkbox mr-4" ${item.checked ? 'checked' : ''} onclick="event.stopPropagation(); app.modules.checklists.toggleItem(${index})">
+                        <span class="text-lg flex-1 ${item.checked ? 'line-through text-gray-500' : 'text-textMain font-medium'}">${item.name}</span>
+                    </div>
+                `).join('');
+
+                this.checkCompletion(list);
+            },
+            toggleItem: function(index) {
+                let lists = app.storage.get('checklists');
+                const listIndex = lists.findIndex(i => i.id === app.state.activeChecklistId);
+                if(listIndex > -1) {
+                    lists[listIndex].items[index].checked = !lists[listIndex].items[index].checked;
+                    app.storage.set('checklists', lists);
+                    this.renderActive();
+                }
+            },
+            resetActive: function() {
+                let lists = app.storage.get('checklists');
+                const listIndex = lists.findIndex(i => i.id === app.state.activeChecklistId);
+                if(listIndex > -1) {
+                    lists[listIndex].items.forEach(i => i.checked = false);
+                    app.storage.set('checklists', lists);
+                    this.renderActive();
+                    app.ui.toast("Checklist reset.");
+                }
+            },
+            checkCompletion: function(list) {
+                const isComplete = list.items.every(i => i.checked) && list.items.length > 0;
+                const msg = document.getElementById('checklist-complete-msg');
+                if(isComplete) {
+                    msg.classList.remove('hidden');
+                    // Add subtle animation
+                    msg.animate([{ transform: 'scale(0.95)' }, { transform: 'scale(1)' }], { duration: 300 });
+                } else {
+                    msg.classList.add('hidden');
+                }
+            }
+        },
+
+        food: {
+            db: [
+                { name: "Banana", info: ["Commonly provides carbohydrates", "Contains dietary fiber", "Contains potassium", "Good pre-workout snack"] },
+                { name: "Milk", info: ["Good source of Calcium", "Contains Protein", "May contain lactose (allergen for some)", "Contains Vitamin D (often fortified)"] },
+                { name: "Egg", info: ["High-quality protein source", "Contains all essential amino acids", "Common allergen", "Contains cholesterol"] },
+                { name: "Almonds", info: ["Rich in healthy fats", "Good source of Vitamin E", "Tree nut allergen", "Contains fiber and protein"] },
+                { name: "Oats", info: ["Complex carbohydrates", "High in soluble fiber (beta-glucan)", "Generally gluten-free but may be cross-contaminated", "Sustained energy release"] },
+                { name: "Apple", info: ["Contains Vitamin C", "Good source of fiber (mostly in skin)", "Low glycemic index", "Contains antioxidants"] },
+                { name: "Peanuts", info: ["Technically a legume, not a nut", "High in protein and fat", "Very common severe allergen", "Energy dense"] }
+            ],
+            savePrefs: function() {
+                const diet = document.getElementById('pref-diet').value;
+                const avoid = document.getElementById('pref-avoid').value;
+                app.storage.setPrefs({ diet, avoid });
+                app.ui.hideModal('modal-food-prefs');
+                app.ui.toast("Food preferences saved.");
+            },
+            search: function(e) {
+                const term = e.target.value.toLowerCase().trim();
+                const container = document.getElementById('food-results');
+                
+                if(term.length < 2) {
+                    container.innerHTML = `
+                        <div class="text-center py-10 text-gray-400">
+                            <i class="ph-fill ph-apple-podcasts text-5xl mb-2 opacity-50"></i>
+                            <p>Search for a food to explore general information.</p>
+                        </div>`;
+                    return;
+                }
+
+                const results = this.db.filter(item => item.name.toLowerCase().includes(term));
+                const prefs = app.storage.getPrefs();
+                const avoids = prefs.avoid ? prefs.avoid.toLowerCase().split(',').map(s=>s.trim()) : [];
+
+                if(results.length === 0) {
+                    container.innerHTML = `<div class="p-4 bg-white rounded-xl text-center shadow-sm">No results found for "${term}" in V1 basic database.</div>`;
+                    return;
+                }
+
+                container.innerHTML = results.map(item => {
+                    const isAvoided = avoids.some(a => a && item.name.toLowerCase().includes(a) || item.info.some(i => i.toLowerCase().includes(a)));
+                    let warningHtml = '';
+                    if(isAvoided) {
+                        warningHtml = `<div class="mt-3 bg-red-50 text-red-700 text-xs p-2 rounded flex items-center"><i class="ph-fill ph-warning-circle mr-1"></i> Matches your "Foods to Avoid" preference.</div>`;
+                    }
+
+                    return `
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
+                        <h3 class="text-xl font-bold uppercase tracking-wide text-accent5 border-b border-gray-100 pb-2 mb-3">${item.name}</h3>
+                        <p class="text-xs font-bold text-gray-500 mb-2">GENERAL INFORMATION:</p>
+                        <ul class="space-y-2">
+                            ${item.info.map(info => `<li class="flex items-start text-sm"><i class="ph-fill ph-check-circle text-accent1 mr-2 mt-0.5"></i> ${info}</li>`).join('')}
+                        </ul>
+                        ${warningHtml}
+                    </div>`;
+                }).join('');
+            }
+        },
+
+        today: {
+            render: function() {
+                const container = document.getElementById('today-content');
+                document.getElementById('today-date-text').innerText = dateFns.format(new Date(), 'dd MMMM yyyy');
+                
+                let html = '';
+                const today = new Date();
+                today.setHours(0,0,0,0);
+
+                // 1. Check Purchases
+                const purchases = app.storage.get('purchases');
+                const expPurchases = purchases.filter(p => {
+                    const diff = Math.ceil((new Date(p.expiryDate) - today) / (1000 * 60 * 60 * 24));
+                    return diff >= 0 && diff <= 3; // expiring in next 3 days
+                });
+
+                if(expPurchases.length > 0) {
+                    html += `
+                        <div class="mb-2">
+                            <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 flex items-center"><i class="ph ph-shopping-cart mr-1"></i> Expiring Soon</h3>
+                            ${expPurchases.slice(0,2).map(p => `
+                                <div class="bg-white p-3 rounded-xl shadow-sm border-l-4 border-l-accent1 mb-2">
+                                    <div class="font-bold">${p.name}</div>
+                                    <div class="text-xs text-orange-500">Expires: ${dateFns.format(new Date(p.expiryDate), 'dd MMM')}</div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `;
+                }
+
+                // 2. Check Medical
+                const meds = app.storage.get('medical');
+                const expMeds = meds.filter(m => {
+                    const diff = Math.ceil((new Date(m.expiryDate) - today) / (1000 * 60 * 60 * 24));
+                    return diff >= 0 && diff <= 30; 
+                });
+
+                 if(expMeds.length > 0) {
+                    html += `
+                        <div class="mb-2">
+                            <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 flex items-center"><i class="ph ph-pill mr-1"></i> Medical Alerts</h3>
+                            ${expMeds.slice(0,2).map(m => `
+                                <div class="bg-white p-3 rounded-xl shadow-sm border-l-4 border-l-accent2 mb-2">
+                                    <div class="font-bold">${m.name}</div>
+                                    <div class="text-xs text-red-500">Check expiry: ${dateFns.format(new Date(m.expiryDate), 'dd MMM')}</div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `;
+                }
+
+                // 3. Timeline Today
+                const todayStr = app.ui.getTodayDate();
+                const timeline = app.storage.get('timeline').filter(t => t.date === todayStr);
+                
+                if(timeline.length > 0) {
+                     html += `
+                        <div class="mb-2">
+                            <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 flex items-center"><i class="ph ph-map-pin mr-1"></i> Today's Timeline</h3>
+                            <div class="bg-white p-3 rounded-xl shadow-sm border border-gray-100">
+                                ${timeline.map(t => `<div class="text-sm border-b last:border-0 border-gray-50 py-1 font-medium">${t.arrivalTime} - ${t.place}</div>`).join('')}
+                            </div>
+                        </div>
+                    `;
+                } else {
+                     html += `
+                        <div class="mb-2">
+                            <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 flex items-center"><i class="ph ph-map-pin mr-1"></i> Today's Timeline</h3>
+                            <div class="bg-gray-50 p-3 rounded-xl border border-gray-100 text-sm text-gray-400 text-center cursor-pointer" onclick="app.ui.showAddModal('timeline')">
+                                + Log where you are
+                            </div>
+                        </div>
+                    `;
+                }
+
+                // 4. Checklists Quick Access
+                const checklists = app.storage.get('checklists');
+                if(checklists.length > 0) {
+                    html += `
+                        <div class="mb-2">
+                            <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 flex items-center"><i class="ph ph-backpack mr-1"></i> Checklists</h3>
+                            <div class="flex gap-2 overflow-x-auto pb-2">
+                                ${checklists.map(c => `
+                                    <div onclick="app.modules.checklists.open('${c.id}')" class="whitespace-nowrap bg-white px-4 py-2 rounded-lg shadow-sm border border-gray-100 text-sm font-medium flex-shrink-0 cursor-pointer active:bg-gray-50">
+                                        ${c.destination}
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    `;
+                }
+
+                if(html === '') {
+                    html = `
+                    <div class="flex-1 flex flex-col items-center justify-center text-gray-400 mt-10">
+                        <i class="ph-fill ph-sun text-6xl mb-4 text-gray-200"></i>
+                        <p class="text-center">Your day is clear.</p>
+                        <p class="text-sm text-center mt-2">Use the + button below to add<br>things you want LIFORA to remember.</p>
+                    </div>`;
+                }
+
+                container.innerHTML = html;
+            }
+        }
+    },
+
+    init: function() {
+        // Set Greeting
+        const hour = new Date().getHours();
+        const greeting = document.getElementById('greeting-text');
+        if (hour < 12) greeting.innerText = "Good Morning 👋";
+        else if (hour < 17) greeting.innerText = "Good Afternoon 👋";
+        else greeting.innerText = "Good Evening 👋";
+
+        // Splash screen logic
+        setTimeout(() => {
+            const splash = document.getElementById('splash-view');
+            splash.style.opacity = '0';
+            splash.style.transition = 'opacity 0.5s ease';
+            setTimeout(() => {
+                splash.style.display = 'none';
+                app.navigate('home');
+            }, 500);
+        }, 1500); // Show splash for 1.5s
+    }
+};
+
+// Start app when DOM is ready
+document.addEventListener('DOMContentLoaded', () => app.init());
+
+</script>
+</body>
+</html>
